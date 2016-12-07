@@ -22,6 +22,7 @@
     <group>
         <item
             android:id="@id/done"
+            android:icon="@drawable/done"
             android:title="@string/picker_done_capital"
             android:visible="false"
             app:showAsAction="always" />
