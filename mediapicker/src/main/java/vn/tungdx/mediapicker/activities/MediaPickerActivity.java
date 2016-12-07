@@ -28,6 +28,7 @@ import android.view.MenuItem;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import vn.tungdx.mediapicker.CropListener;
@@ -232,31 +233,34 @@ public class MediaPickerActivity extends AppCompatActivity implements
             }
             return true;
         } else if (i == R.id.done) {
-            Fragment activePage;
-            activePage = getActivePage();
-            boolean isPhoto = ((MediaPickerFragment) activePage)
-                    .getMediaType() == MediaItem.PHOTO;
+            MediaPickerFragment activePage;
+            activePage = (MediaPickerFragment) getActivePage();
+            boolean isPhoto = activePage.getMediaType() == MediaItem.PHOTO;
+
+            List<MediaItem> mediaSelectedList = activePage.getMediaSelectedList();
+            if (mediaSelectedList.isEmpty()) {
+                // ok, just return empty elements, all deselected
+                returnBackData(mediaSelectedList);
+                return true;
+            }
+
             if (isPhoto) {
+                // TODO: [DG - 7/12/16] actually we should be able to crop all selected photos
                 if (mMediaOptions.isCropped()
                         && !mMediaOptions.canSelectMultiPhoto()) {
                     // get first item in list (pos=0) because can only crop 1 image at same time.
                     MediaItem mediaItem = new MediaItem(MediaItem.PHOTO,
-                            ((MediaPickerFragment) activePage)
-                                    .getMediaSelectedList().get(0)
-                                    .getUriOrigin());
+                                                        mediaSelectedList.get(0).getUriOrigin());
                     showCropFragment(mediaItem, mMediaOptions);
                 } else {
-                    returnBackData(((MediaPickerFragment) activePage)
-                            .getMediaSelectedList());
+                    returnBackData(mediaSelectedList);
                 }
             } else {
                 if (mMediaOptions.canSelectMultiVideo()) {
-                    returnBackData(((MediaPickerFragment) activePage)
-                            .getMediaSelectedList());
+                    returnBackData(mediaSelectedList);
                 } else {
                     // only get 1st item regardless of have many.
-                    returnVideo(((MediaPickerFragment) activePage)
-                            .getMediaSelectedList().get(0).getUriOrigin());
+                    returnVideo(mediaSelectedList.get(0).getUriOrigin());
                 }
             }
             return true;
@@ -278,39 +282,51 @@ public class MediaPickerActivity extends AppCompatActivity implements
 
     @Override
     public void onHasNoSelected() {
-        mDone.setVisible(false);
         syncActionbar();
     }
 
     @Override
     public void onHasSelected(List<MediaItem> mediaSelectedList) {
-        showDone();
+        syncActionbar();
     }
 
-    private void showDone() {
+    private void showDone(boolean hideMedia) {
         mDone.setVisible(true);
-        mPhoto.setVisible(false);
-        mVideo.setVisible(false);
-        mMediaSwitcher.setVisible(false);
+//        mPhoto.setVisible(!hideMedia);
+//        mVideo.setVisible(!hideMedia);
+//        mMediaSwitcher.setVisible(!hideMedia);
     }
 
     private void syncMediaOptions() {
+
+        Fragment activePage = getActivePage();
+        boolean isPhotoPage = true;
+        int numSelected = 0;
+        if (activePage instanceof MediaPickerFragment) {
+            MediaPickerFragment page = (MediaPickerFragment) activePage;
+            isPhotoPage = page.getMediaType() == MediaItem.PHOTO;
+            numSelected = page.getMediaSelectedList().size();
+        }
+
+        boolean photoVisibility = mMediaOptions.canSelectPhoto() && numSelected == 0 || mMediaOptions.canSelectMultiPhoto();
+        boolean videoVisibility = mMediaOptions.canSelectVideo() && numSelected == 0 || mMediaOptions.canSelectMultiVideo();
+
+        boolean switcherVisibility;
+        if (mMediaOptions.canSelectPhotoAndVideo() && numSelected == 0) {
+            switcherVisibility = true; // only allow switch to get one type or the other, don't mix types for now
+        } else {
+            switcherVisibility = false;
+            if (isPhotoPage) {
+                videoVisibility = false;
+            } else {
+                photoVisibility = false;
+            }
+        }
+
         // handle media options
-        if (mMediaOptions.canSelectPhotoAndVideo()) {
-            mMediaSwitcher.setVisible(true);
-        } else {
-            mMediaSwitcher.setVisible(false);
-        }
-        if (mMediaOptions.canSelectPhoto()) {
-            mPhoto.setVisible(true);
-        } else {
-            mPhoto.setVisible(false);
-        }
-        if (mMediaOptions.canSelectVideo()) {
-            mVideo.setVisible(true);
-        } else {
-            mVideo.setVisible(false);
-        }
+        mMediaSwitcher.setVisible(switcherVisibility);
+        mPhoto.setVisible(photoVisibility);
+        mVideo.setVisible(videoVisibility);
     }
 
     private void syncIconMenu(int mediaType) {
@@ -328,8 +344,8 @@ public class MediaPickerActivity extends AppCompatActivity implements
 
     private void returnBackData(List<MediaItem> mediaSelectedList) {
         Intent data = new Intent();
-        data.putParcelableArrayListExtra(EXTRA_MEDIA_SELECTED,
-                (ArrayList<MediaItem>) mediaSelectedList);
+        ArrayList<MediaItem> elements = new ArrayList<>(null != mediaSelectedList ? mediaSelectedList : Collections.<MediaItem>emptyList());
+        data.putParcelableArrayListExtra(EXTRA_MEDIA_SELECTED, elements);
         setResult(Activity.RESULT_OK, data);
         finish();
     }
@@ -523,6 +539,7 @@ public class MediaPickerActivity extends AppCompatActivity implements
 
     @Override
     public void onSuccess(MediaItem mediaItem) {
+        // TODO: [DG - 7/12/16] we should be able to crop all photos
         List<MediaItem> list = new ArrayList<MediaItem>();
         list.add(mediaItem);
         returnBackData(list);
@@ -549,8 +566,9 @@ public class MediaPickerActivity extends AppCompatActivity implements
             syncMediaOptions();
             MediaPickerFragment pickerFragment = (MediaPickerFragment) fragment;
             syncIconMenu(pickerFragment.getMediaType());
-            if (pickerFragment.hasMediaSelected()) {
-                showDone();
+            boolean hadSelected = !mMediaOptions.getMediaListSelected().isEmpty();
+            if (pickerFragment.hasMediaSelected() || hadSelected) {
+                showDone(pickerFragment.hasMediaSelected());
             } else {
                 mDone.setVisible(false);
             }

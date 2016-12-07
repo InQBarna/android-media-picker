@@ -6,6 +6,7 @@ import android.os.Parcelable;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import vn.tungdx.mediapicker.utils.MediaUtils;
@@ -59,7 +60,7 @@ public class MediaOptions implements Parcelable {
     }
 
     public List<MediaItem> getMediaListSelected() {
-        return mediaListSelected;
+        return null == mediaListSelected ? Collections.<MediaItem>emptyList() : Collections.unmodifiableList(mediaListSelected);
     }
 
     public File getCroppedFile() {
@@ -272,6 +273,9 @@ public class MediaOptions implements Parcelable {
          */
         public Builder canSelectMultiPhoto(boolean canSelectMulti) {
             this.canSelectMultiPhoto = canSelectMulti;
+            if (canSelectMulti) {
+                this.canSelectPhoto = true;
+            }
             return this;
         }
 
@@ -286,6 +290,8 @@ public class MediaOptions implements Parcelable {
         public Builder canSelectMultiVideo(boolean canSelectMulti) {
             this.canSelectMultiVideo = canSelectMulti;
             if (canSelectMultiVideo) {
+                this.canSelectVideo = true;
+
                 maxVideoDuration = Integer.MAX_VALUE;
                 minVideoDuration = 0;
             }

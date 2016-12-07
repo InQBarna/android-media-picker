@@ -88,21 +88,19 @@ public class MediaPickerFragment extends BaseFragment implements
             mMediaOptions = savedInstanceState
                     .getParcelable(MediaPickerActivity.EXTRA_MEDIA_OPTIONS);
             mMediaType = savedInstanceState.getInt(KEY_MEDIA_TYPE);
-            mMediaSelectedList = savedInstanceState
-                    .getParcelableArrayList(KEY_MEDIA_SELECTED_LIST);
+            mMediaSelectedList = savedInstanceState.getParcelableArrayList(KEY_MEDIA_SELECTED_LIST);
             mSavedInstanceState = savedInstanceState;
         } else {
-            mMediaOptions = getArguments().getParcelable(
-                    MediaPickerActivity.EXTRA_MEDIA_OPTIONS);
+            mMediaOptions = getArguments().getParcelable(MediaPickerActivity.EXTRA_MEDIA_OPTIONS);
             if (mMediaOptions.canSelectPhotoAndVideo()
                     || mMediaOptions.canSelectPhoto()) {
                 mMediaType = MediaItem.PHOTO;
             } else {
                 mMediaType = MediaItem.VIDEO;
             }
-            mMediaSelectedList = mMediaOptions.getMediaListSelected();
+            mMediaSelectedList = new ArrayList<>(mMediaOptions.getMediaListSelected());
             // Override mediaType by 1st item media if has media selected.
-            if (mMediaSelectedList != null && mMediaSelectedList.size() > 0) {
+            if (!mMediaSelectedList.isEmpty()) {
                 mMediaType = mMediaSelectedList.get(0).getType();
             }
         }
